@@ -152,6 +152,7 @@ void FuelMFD::FuelBar (HDC hDC, int tank_nr, int cur_line)
 	double remaining_time; // seconds
 	double rem_time_sec; // mode 0
 	double rem_time_min; // mode 0
+	double rem_time_h; // mode 0
 
 	prop_mass = v->GetPropellantMass(v->GetPropellantHandleByIndex(tank_nr-1));
 	prop_max_mass = v->GetPropellantMaxMass(v->GetPropellantHandleByIndex(tank_nr-1));
@@ -162,7 +163,8 @@ void FuelMFD::FuelBar (HDC hDC, int tank_nr, int cur_line)
 	else if (prop_flowrate<0) remaining_time = - (prop_max_mass-prop_mass) / prop_flowrate; // refueling
 	else remaining_time = -1; // no fuel flow -> no remaining time
 
-	rem_time_min = floor(remaining_time / 60.0);
+	rem_time_h = floor(remaining_time / 3600.0);
+	rem_time_min = (long)(remaining_time / 60.0) % 60;
 	rem_time_sec = (long)remaining_time % 60;
 
 	bar_parts = tank_percent/4.0; //max. lenght of the bar is 25 => 25parts * 4% = 100%
@@ -191,12 +193,12 @@ void FuelMFD::FuelBar (HDC hDC, int tank_nr, int cur_line)
 	cur_line += LINE;
 	if (prop_flowrate>0) 
 		if (disp_mode==0)
-			sprintf_s(buffer,"Empty in %.0f min %02.0f sec",rem_time_min,rem_time_sec);
+			sprintf_s(buffer,"Empty in %.0f h %02.0f min %02.0f sec",rem_time_h,rem_time_min,rem_time_sec);
 		else
 			sprintf_s(buffer,"Empty in %.1f minutes",remaining_time/60.0);
 	else if (prop_flowrate<0) 
 		if (disp_mode==0)
-			sprintf_s(buffer,"Full in %.0f min %02.0f sec",rem_time_min,rem_time_sec);
+			sprintf_s(buffer,"Full in %.0f h %02.0f min %02.0f sec",rem_time_h,rem_time_min,rem_time_sec);
 		else
 			sprintf_s(buffer,"Full in %.1f minutes",remaining_time/60.0);
 	else sprintf_s(buffer,"\0");
