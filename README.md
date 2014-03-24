@@ -23,6 +23,6 @@ Usage:
 * Open FuelMFD (`shift-E`)
 * PRV: previous page (`shift-P`)
 * NXT: next page (`shift-N`)
-* MOD: switches time format: i.e. 400 min 00 sec <-> 24ks
+* MOD: switches time format: i.e. 1 h 40 min 00 sec <-> 100.00 minutes
 
 If the fuel in a tank drops below 5% or the remaining time drops below 1 minute, the specific bar for this tank changes to a red color.
