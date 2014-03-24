@@ -117,7 +117,7 @@ int FuelMFD::ButtonMenu (const MFDBUTTONMENU **menu) const
 	return 3;
 }
 
-char FuelMFD::PotToSuffix (int i)
+/*char FuelMFD::PotToSuffix (int i)
 {
 	switch (i) {
 	case 1: // 1000^1; kilo
@@ -138,7 +138,7 @@ char FuelMFD::PotToSuffix (int i)
 		return 'Y';
 	}
 	return ' ';
-}
+}*/
 
 void FuelMFD::FuelBar (HDC hDC, int tank_nr, int cur_line)
 {
@@ -149,11 +149,9 @@ void FuelMFD::FuelBar (HDC hDC, int tank_nr, int cur_line)
 	double prop_mass; // kg
 	double prop_max_mass; // kg
 	double prop_flowrate; // kg/sec
-	unsigned long long remaining_time; // seconds
-	unsigned long long rem_time_sec; // mode 0
-	unsigned long long rem_time_min; // mode 0
-	long double rem_sec; // mode 1
-	int sffx=0; // for rem_time_sec*1000^sffx sec
+	double remaining_time; // seconds
+	double rem_time_sec; // mode 0
+	double rem_time_min; // mode 0
 
 	prop_mass = v->GetPropellantMass(v->GetPropellantHandleByIndex(tank_nr-1));
 	prop_max_mass = v->GetPropellantMaxMass(v->GetPropellantHandleByIndex(tank_nr-1));
@@ -162,24 +160,12 @@ void FuelMFD::FuelBar (HDC hDC, int tank_nr, int cur_line)
 	tank_percent = prop_mass / prop_max_mass * 100;
 	if (prop_flowrate>0) remaining_time = prop_mass / prop_flowrate; 
 	else if (prop_flowrate<0) remaining_time = - (prop_max_mass-prop_mass) / prop_flowrate; // refueling
-	else remaining_time = 0;
+	else remaining_time = -1; // no fuel flow -> no remaining time
 
-	if (disp_mode==0)
-	{
-		rem_time_min = remaining_time / 60;
-		rem_time_sec = remaining_time % 60;
-	} else
-	{
-		sffx = remaining_time / 1000;
-		if (sffx<=8) // ok, we got prefixes for that
-			rem_sec = remaining_time*1.0 / (1000^sffx);
-		else { // damn, too large :-/
-			sffx = 8;
-			rem_sec = remaining_time*1.0 / (1000^sffx);
-		}
-	}
+	rem_time_min = floor(remaining_time / 60.0);
+	rem_time_sec = (long)remaining_time % 60;
 
-	bar_parts = tank_percent/4; //max. lenght of the bar is 25 => 25parts * 4% = 100%
+	bar_parts = tank_percent/4.0; //max. lenght of the bar is 25 => 25parts * 4% = 100%
 	if (bar_parts>25) bar_parts=25;
 	if (bar_parts<0) bar_parts=0;
 
@@ -195,26 +181,24 @@ void FuelMFD::FuelBar (HDC hDC, int tank_nr, int cur_line)
 	TextOut(hDC, 5, cur_line, buffer, strlen(buffer));
 	cur_line += LINE; //Next Line
 
-	if ((tank_percent<=5) || ((prop_flowrate>0) && ( ((disp_mode==0)&&(rem_time_min==0)) || ((disp_mode==1)&&(sffx==0)&&(rem_time_sec<60)))))
+	//Alert! Fuel<=5% or remaining time < 60 sec
+	if ((tank_percent<=5) || (remaining_time > 0 && remaining_time<60))
 		SetTextColor(hDC, RGB(255,0,0)); 
-	//Alert! Fuel<=5% or (remaining time < 60 sec (mode 0) or remaining time < 60 s (mode 1; i==0) )
+	
 	sprintf_s(buffer,"%5.1f%% [%-25s]",tank_percent,bar);
 	TextOut(hDC, 5, cur_line, buffer, strlen(buffer));
 
 	cur_line += LINE;
 	if (prop_flowrate>0) 
 		if (disp_mode==0)
-			sprintf_s(buffer,"Empty in %i min %02i sec",rem_time_min,rem_time_sec);
+			sprintf_s(buffer,"Empty in %.0f min %02.0f sec",rem_time_min,rem_time_sec);
 		else
-			sprintf_s(buffer,"Empty in %.3f%cs",rem_sec,PotToSuffix(sffx));
+			sprintf_s(buffer,"Empty in %.1f minutes",remaining_time/60.0);
 	else if (prop_flowrate<0) 
-	{
-			SetTextColor(hDC, RGB(0,255,0)); // for full tank, we don't need a warning
-			if (disp_mode==0)
-				sprintf_s(buffer,"Full in %i min %02i sec",rem_time_min,rem_time_sec);
-			else
-				sprintf_s(buffer,"Full in %.3f%cs",rem_sec,PotToSuffix(sffx));
-	}
+		if (disp_mode==0)
+			sprintf_s(buffer,"Full in %.0f min %02.0f sec",rem_time_min,rem_time_sec);
+		else
+			sprintf_s(buffer,"Full in %.1f minutes",remaining_time/60.0);
 	else sprintf_s(buffer,"\0");
 	TextOut(hDC, 5, cur_line, buffer, strlen(buffer));
 	SetTextColor(hDC, RGB(0,255,0)); // Reset Alarm -> color green
@@ -240,8 +224,7 @@ void FuelMFD::Update (HDC hDC)
 
 	CurrentLine = 2*LINE; //Beginning of the display
 	
-	for (int i=1; (i<=6) && (i+page*6<=maxtanks) ; i++)
-	{
+	for (int i=1; (i<=6) && (i+page*6<=maxtanks) ; i++) {
 		FuelBar(hDC, i+page*6 , CurrentLine);
 		CurrentLine += LINE*4;
 	}
